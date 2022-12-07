@@ -4,3 +4,4 @@ sphinx-git
 sphinx_rtd_theme
 sphinxcontrib-bibtex
 docutils<0.18
+jinja2<3.1
