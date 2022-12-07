@@ -515,7 +515,7 @@ Program specification
 
 #. In file ``sym_tab.cc``: Complete the empty method body for
 
-   .. doxygenfunction :: symbol_table::gen_temp_var()
+   .. doxygenfunction :: symbol_table::gen_temp_var(sym_index)
 
 #. Pay special attention to the handling of parameters. Make sure they
    are generated in the correct order.
