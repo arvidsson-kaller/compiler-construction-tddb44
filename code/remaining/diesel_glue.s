@@ -33,7 +33,7 @@ main: # this is where the process starts
 
 L0: # read function
     # Return value is in RAX
-    call    getchar
+    call    mygetchar
     ret
 
 L1: # write procedure
