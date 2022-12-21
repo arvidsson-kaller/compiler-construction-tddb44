@@ -548,7 +548,7 @@ sym_index symbol_table::close_scope()
 
 /*** Main symbol table methods. ***/
 
-/* Return a sym_index to the sought symbol (or 0 if none was found), given
+/* Return a sym_index to the sought symbol (or NULL_SYM if none was found), given
    a string_pool index. Starts searching in the current block level and
    follows hash links outwards. */
 sym_index symbol_table::lookup_symbol(const pool_index pool_p)
