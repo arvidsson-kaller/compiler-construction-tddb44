@@ -303,10 +303,10 @@ void symbol_table::print(int detail)
                 break;
             }
             case SYM_FUNC: {
-                function_symbol *func = tmp->get_function_symbol();
+                function_symbol *proc = tmp->get_function_symbol();
                 cout << "SYM_FUNC" << setw(6) << "lbl = "
-                     << setw(3) << func->label_nr << setw(9)
-                     << "ar_size = " << setw(3) << func->ar_size;
+                     << setw(3) << proc->label_nr << setw(9)
+                     << "ar_size = " << setw(3) << proc->ar_size;
                 break;
             }
             case SYM_ARRAY: {
@@ -535,14 +535,27 @@ sym_index symbol_table::current_environment()
 void symbol_table::open_scope()
 {
     /* Your code here */
+    current_level++;
+    block_table[current_level] = sym_pos;
+    // TODO: check if we exceed MAX_BLOCK
 }
 
 
 /* Decrease the current_level by one. Return sym_index to new environment. */
 sym_index symbol_table::close_scope()
-{
-    /* Your code here */
-    return NULL_SYM;
+{    
+    for (sym_index i = sym_pos; i > current_environment(); i--)
+    {
+        hash_index h_index = hash(sym_table[i]->id);
+        if (hash_table[h_index] == i)
+        {
+            hash_table[h_index] = sym_table[i]->hash_link;
+            sym_table[i]->hash_link = NULL_SYM;
+        }
+    }
+    block_table[current_level] = 0;
+    current_level--;
+    return current_environment();
 }
 
 
@@ -553,7 +566,25 @@ sym_index symbol_table::close_scope()
    follows hash links outwards. */
 sym_index symbol_table::lookup_symbol(const pool_index pool_p)
 {
-    /* Your code here */
+    sym_index cur_sym_index = hash_table[hash(pool_p)];
+    if (cur_sym_index == NULL_SYM)
+    {
+        return NULL_SYM;
+    }
+    while (1)
+    {
+        symbol* current_symbol = get_symbol(cur_sym_index);
+        if (pool_compare(current_symbol->id, pool_p))
+        {
+            return cur_sym_index;
+        }
+        else
+        {
+            cur_sym_index = current_symbol->hash_link;
+        }
+        if (cur_sym_index == NULL_SYM) break;
+    }
+    
     return NULL_SYM;
 }
 
@@ -643,8 +674,59 @@ void symbol_table::set_symbol_type(const sym_index sym_p,
 sym_index symbol_table::install_symbol(const pool_index pool_p,
                                        const sym_type tag)
 {
-    /* Your code here */
-    return 0; // Return index to the symbol we just created.
+ 
+    sym_index existing_sym_index = lookup_symbol(pool_p);
+
+    if (existing_sym_index != NULL_SYM && get_symbol(existing_sym_index)->level == current_level)
+    {
+        return existing_sym_index;
+    }
+    symbol* new_symbol;
+    switch (tag) 
+    {
+        case SYM_CONST:
+            new_symbol = new constant_symbol(pool_p);
+            break;
+        case SYM_VAR:
+            new_symbol = new variable_symbol(pool_p);
+            break;
+        case SYM_ARRAY:
+            new_symbol = new array_symbol(pool_p);
+            break;
+        case SYM_PARAM:
+            new_symbol = new parameter_symbol(pool_p);
+            break;
+        case SYM_PROC:
+            new_symbol = new procedure_symbol(pool_p);
+            break;
+        case SYM_FUNC:
+            new_symbol = new function_symbol(pool_p);
+            break;
+        case SYM_NAMETYPE:
+            new_symbol = new nametype_symbol(pool_p);
+            break;
+        default:
+            fatal("Symbol type not defined 😀");
+    }
+    new_symbol->level = current_level;
+    new_symbol->offset = 0;
+
+    hash_index h_index = hash(pool_p);
+    new_symbol->back_link = h_index;
+    sym_index existing_index = hash_table[h_index];
+    if (existing_index != NULL_SYM)
+    {
+        new_symbol->hash_link = existing_index;
+    }
+    else
+    {
+        new_symbol->hash_link = NULL_SYM;
+    }
+
+    hash_table[h_index] = ++sym_pos;
+    sym_table[sym_pos] = new_symbol;
+
+    return sym_pos; // Return index to the symbol we just created.
 }
 
 /* Enter a constant into the symbol table. The value is an integer. The type
@@ -861,24 +943,24 @@ sym_index symbol_table::enter_function(position_information *pos,
     // When testing labb2, test nr 3 a function type will be set,
     // but it is done inside the testprogram symtabtest.cc
     sym_index sym_p = install_symbol(pool_p, SYM_FUNC);
-    function_symbol *func = sym_table[sym_p]->get_function_symbol();
+    function_symbol *proc = sym_table[sym_p]->get_function_symbol();
 
     // Make sure it's not already been declared.
-    if (func->tag != SYM_UNDEF) {
-        type_error(pos) << "Redeclaration: " << func << endl;
+    if (proc->tag != SYM_UNDEF) {
+        type_error(pos) << "Redeclaration: " << proc << endl;
         return sym_p; // returns the original symbol
     }
 
     // Set up the function-specific fields.
-    func->tag = SYM_FUNC;
+    proc->tag = SYM_FUNC;
     // Parameters are added later on.
-    func->last_parameter = NULL;
+    proc->last_parameter = NULL;
 
     // This will grow as local variables and temporaries are added.
-    func->ar_size = 0;
-    func->label_nr = get_next_label();
+    proc->ar_size = 0;
+    proc->label_nr = get_next_label();
 
-    sym_table[sym_p] = func;
+    sym_table[sym_p] = proc;
 
     return sym_p;
 }
@@ -888,8 +970,28 @@ sym_index symbol_table::enter_function(position_information *pos,
 sym_index symbol_table::enter_procedure(position_information *pos,
                                         const pool_index pool_p)
 {
-    /* Your code here */
-    return NULL_SYM;
+    sym_index sym_p = install_symbol(pool_p, SYM_PROC);
+    procedure_symbol *proc = sym_table[sym_p]->get_procedure_symbol();
+
+    // Make sure it's not already been declared.
+    if (proc->tag != SYM_UNDEF) {
+        type_error(pos) << "Redeclaration: " << proc << endl;
+        return sym_p; // returns the original symbol
+    }
+
+    // Set up the procedure-specific fields.
+    proc->tag = SYM_PROC;
+    // Parameters are added later on.
+    proc->last_parameter = NULL;
+    proc->type = void_type;
+
+    // This will grow as local variables and temporaries are added.
+    proc->ar_size = 0;
+    proc->label_nr = get_next_label();
+
+    sym_table[sym_p] = proc;
+
+    return sym_p;
 }
 
 
@@ -925,9 +1027,9 @@ sym_index symbol_table::enter_parameter(position_information *pos,
     parameter_symbol *tmp_param;
 
     if (tmp->tag == SYM_FUNC) {
-        function_symbol *func = tmp->get_function_symbol();
-        tmp_param = func->last_parameter; // This is the old last parameter.
-        func->last_parameter = par;       // Make 'par' the new last parameter.
+        function_symbol *proc = tmp->get_function_symbol();
+        tmp_param = proc->last_parameter; // This is the old last parameter.
+        proc->last_parameter = par;       // Make 'par' the new last parameter.
     } else if (tmp->tag == SYM_PROC) {
         procedure_symbol *proc = tmp->get_procedure_symbol();
         tmp_param = proc->last_parameter; // This is the old last parameter.
