@@ -2,6 +2,8 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
+#include <limits.h>
 
 #if defined(LAB1)
 
@@ -299,11 +301,13 @@ procedure                {
                          }
     "/\*"                {
                             column += 2;
+                            error_count++;
                             yyerror("Suspicious comment");
                          }
     [^\n]                column++; /* Skip stuff in comments */
     \n                   column = 0;
     <<EOF>>              {
+                            error_count++;
                             yyerror("Unterminated comment");
                             yyterminate();
                          }
@@ -321,11 +325,13 @@ procedure                {
                          }
     "{"                {
                             column += 1;
+                            error_count++;
                             yyerror("Suspicious comment");
                          }
     [^\n]                column++; /* Skip stuff in comments */
     \n                   column = 0;
     <<EOF>>              {
+                            error_count++;
                             yyerror("Unterminated comment");
                             yyterminate();
                          }
@@ -343,8 +349,11 @@ procedure                {
                             yylloc.first_line = yylineno;
                             yylloc.first_column = column;
                             column += yyleng;
-                            yylval.ival = atol(yytext);
-                            if (yylval.ival == 9223372036854775807 && strcmp(yytext,"9223372036854775807")){
+                            char *endptr;
+                            errno = 0;
+                            yylval.ival = strtol(yytext, &endptr, 10);
+                            if (errno == ERANGE) {
+                              error_count++;
                               yyerror("Integer out of range");
                             }
                             return T_INTNUM; 
@@ -370,6 +379,7 @@ procedure                {
                             yylloc.first_line = yylineno;
                             yylloc.first_column = column;
                             column = 0;
+                            error_count++;
                             yyerror("Newline in string");
                          }
 
