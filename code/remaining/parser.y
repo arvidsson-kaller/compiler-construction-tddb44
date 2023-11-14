@@ -559,25 +559,61 @@ stmt            : T_IF expr T_THEN stmt_list elsif_list else_part T_END
                     position_information *pos = new position_information(@1.first_line, @1.first_column);
                     $$ = new ast_if(pos, $2, $4, $5, $6);
                 }
+                | T_IF error T_THEN stmt_list elsif_list else_part T_END
+                {
+                    $$ = NULL;
+                }
+                | T_IF expr T_THEN error T_END
+                {
+                    $$ = NULL;
+                }
+                | T_IF error T_THEN error T_END
+                {
+                    $$ = NULL;
+                }
                 | T_WHILE expr T_DO stmt_list T_END
                 {
                     position_information *pos = new position_information(@1.first_line, @1.first_column);
                     $$ = new ast_while(pos, $2, $4);
+                }
+                | T_WHILE error T_DO stmt_list T_END
+                {
+                    $$ = NULL;
+                }
+                | T_WHILE expr T_DO error T_END
+                {
+                    $$ = NULL;
+                }
+                | T_WHILE error T_DO error T_END
+                {
+                    $$ = NULL;
                 }
                 | proc_id T_LEFTPAR opt_expr_list T_RIGHTPAR
                 {
                     position_information *pos = new position_information(@1.first_line, @1.first_column);
                     $$ = new ast_procedurecall(pos, $1, $3);
                 }
+                | proc_id T_LEFTPAR error T_RIGHTPAR
+                {
+                    $$ = NULL;
+                }
                 | lvariable T_ASSIGN expr
                 {
                     position_information *pos = new position_information(@1.first_line, @1.first_column);
                     $$ = new ast_assign(pos, $1, $3);
                 }
+                | lvariable T_ASSIGN error // this breaks parstest2 (improvement)
+                {
+                    $$ = NULL;
+                }
                 | T_RETURN expr
                 {
                     position_information *pos = new position_information(@1.first_line, @1.first_column);
                     $$ = new ast_return(pos, $2);
+                }
+                | T_RETURN error
+                {
+                    $$ = NULL;
                 }
                 | T_RETURN
                 {
@@ -586,10 +622,6 @@ stmt            : T_IF expr T_THEN stmt_list elsif_list else_part T_END
                 }
                 
                 | /* empty */
-                {
-                    $$ = NULL;
-                }
-                | error
                 {
                     $$ = NULL;
                 }
@@ -621,7 +653,7 @@ rvariable       : rvar_id
                     position_information *pos = new position_information(@1.first_line, @1.first_column);
                     $$ = new ast_indexed(pos, $1, $3);
                 }
-                | error
+                | array_id T_LEFTBRACKET error T_RIGHTBRACKET
                 {
                     $$ = NULL;
                 }
