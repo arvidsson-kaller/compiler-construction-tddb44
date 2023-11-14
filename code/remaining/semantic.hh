@@ -42,11 +42,12 @@ public:
     // one for binary_relations, one for conditions (new abstract ast_node?),
     // one for expressions that aren't one of the above? Hmmm...
 
-    sym_index check_binop1(ast_binaryoperation *);
-
-    sym_index check_binop2(ast_binaryoperation *, string);
+    sym_index type_check_integers(ast_binaryoperation *, string);
 
     sym_index check_binrel(ast_binaryrelation *);
+
+    sym_index type_check_and_cast_real(ast_binaryoperation *);
 };
+
 
 #endif
