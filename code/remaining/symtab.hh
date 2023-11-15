@@ -579,6 +579,10 @@ public:
     int get_size(const sym_index);
 
     // --- String pool methods. ---
+    /*!
+    * Finds existing entry of character in string pool, used for shared strings.
+    */
+    pool_index find_existing_entry(char *);
 
     /*!
      Install a string (an identifier or a string constant) in the

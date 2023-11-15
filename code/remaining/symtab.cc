@@ -365,6 +365,36 @@ char *symbol_table::capitalize(const char *s)
     return capitalized_s;
 }
 
+pool_index symbol_table::find_existing_entry(char *s)
+{
+    int s_len = (int) strlen(s);
+    int p = 0;
+    
+    while(p < pool_pos)
+    {
+        int length = (int) string_pool[p];
+        if (length == s_len)
+        {
+            bool match = true;
+            for (int i = 0; i < length; i++)
+            {
+                if (string_pool[p + 1 + i] != s[i])
+                {
+                    match = false;
+                    break;
+                }
+            }
+            if (match)
+            {
+                return p;
+            }
+        } 
+        p += length + 1;
+    }
+    return NULL_SYM;
+}
+
+
 /* Install a string into the pool table and return its index.
    The table is on the form <string1 length>string1<string2 length>string2...
    Note that the null char denotes the end of the entire pool,
@@ -374,7 +404,6 @@ char *symbol_table::capitalize(const char *s)
                   ^
                   pool_pos
 */
-
 pool_index symbol_table::pool_install(char *s)
 {
     // Make sure pool is not full. If it is, double pool size.
@@ -397,6 +426,12 @@ pool_index symbol_table::pool_install(char *s)
     if (strlen(s) >= 255) {
         fatal("symbol_table::pool_install: Too long string");
         return 0;
+    }
+
+    pool_index existing_entry = this->find_existing_entry(s);
+    if (existing_entry != NULL_SYM)
+    {
+        return existing_entry;
     }
 
     // First install the length of the string.
