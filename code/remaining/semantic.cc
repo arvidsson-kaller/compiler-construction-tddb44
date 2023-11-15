@@ -65,23 +65,34 @@ bool semantic::chk_param(ast_id *env,
                          ast_expr_list *actuals)
 {
     /* Your code here */
-    ast_expression *actual_expr = actuals->last_expr;
-    // ast_expression *formal_expr = formals;
-    bool is_same = actual_expr->type == formals->type;
-    
-    if (actuals->preceding == NULL && formals->preceding == NULL)
+    if (actuals == NULL && formals == NULL)
     {
-        return is_same;
+        return true;
     }
-    else if (actuals->preceding != NULL && formals->preceding != NULL)
+    if (actuals != NULL && formals != NULL)
     {
-        is_same = is_same && chk_param(env, formals->preceding, actuals->preceding);
+        if (chk_param(env, formals->preceding, actuals->preceding))
+        {
+            if (actuals->last_expr->type_check() != formals->type)
+            {
+                type_error(actuals->pos) << "Type discrepancy between formal and actual parameters." << endl;
+                return false;
+            }
+            return true;
+        }
+        return false;
     }
-    else
+    if (actuals == NULL)
     {
-        return false; // Mismatching parameter list length
+        type_error(env->pos) << "More formal than actual parameters." << endl;
+        return false;
     }
-    return is_same;
+    if (formals == NULL)
+    {
+        type_error(actuals->pos) << "More actual than formal parameters." << endl;
+        return false;
+    }
+
 }
 
 /* Check formal vs. actual parameters at procedure/function calls. */
@@ -105,10 +116,7 @@ void semantic::check_parameters(ast_id *call_id,
         return;
     }
 
-    if (!chk_param(call_id, formals, param_list))
-    {
-        type_error(call_id->pos) << "Parameter type error in " << sym->tag << " " << call_id << endl;
-    }
+    chk_param(call_id, formals, param_list);
 }
 
 
@@ -220,7 +228,7 @@ sym_index ast_indexed::type_check()
     {
         type_error(pos) << "List index of non-integer type: " << index << endl;
     }
-    return void_type;
+    return id->type_check();
 }
 
 
@@ -234,7 +242,7 @@ sym_index semantic::type_check_and_cast_real(ast_binaryoperation *operation)
     sym_index right_type = operation->right->type_check();
     if (left_type == void_type || right_type == void_type)
     {
-        type_error(operation->pos) << "Binary operations with void types" << endl;    
+        type_error(operation->pos) << "Binary operations with void types" << endl;
     }
 
     if (left_type == right_type)
@@ -256,19 +264,19 @@ sym_index semantic::type_check_and_cast_real(ast_binaryoperation *operation)
 sym_index ast_add::type_check()
 {
     /* Your code here */
-    return type_checker->type_check_and_cast_real(this);
+    return type = type_checker->type_check_and_cast_real(this);
 }
 
 sym_index ast_sub::type_check()
 {
     /* Your code here */
-    return type_checker->type_check_and_cast_real(this);
+    return type = type_checker->type_check_and_cast_real(this);
 }
 
 sym_index ast_mult::type_check()
 {
     /* Your code here */
-    return type_checker->type_check_and_cast_real(this);
+    return type = type_checker->type_check_and_cast_real(this);
 }
 
 /* Divide is a special case, since it always returns real. We make sure the
@@ -276,18 +284,17 @@ sym_index ast_mult::type_check()
 sym_index ast_divide::type_check()
 {
     /* Your code here */
-    sym_index left_type = this->left->type_check();
-    sym_index right_type = this->right->type_check();
+    sym_index left_type = left->type_check();
+    sym_index right_type = right->type_check();
     if (left_type == integer_type)
     {
-        this->left = new ast_cast(this->pos, this->left);
+        left = new ast_cast(left->pos, left);
     }
     if (right_type == integer_type)
     {
-        this->right = new ast_cast(this->pos, this->right);
+        right = new ast_cast(right->pos, right);
     }
-
-    return real_type;
+    return type = real_type;
 }
 
 /* This convenience method is used to type check all binary operations
@@ -311,25 +318,25 @@ sym_index semantic::type_check_integers(ast_binaryoperation *operation, string s
 sym_index ast_or::type_check()
 {
     /* Your code here */
-    return type_checker->type_check_integers(this, "OR");
+    return type = type_checker->type_check_integers(this, "OR");
 }
 
 sym_index ast_and::type_check()
 {
     /* Your code here */
-    return type_checker->type_check_integers(this, "AND");
+    return type = type_checker->type_check_integers(this, "AND");
 }
 
 sym_index ast_idiv::type_check()
 {
     /* Your code here */
-    return type_checker->type_check_integers(this, "IDIV");
+    return type = type_checker->type_check_integers(this, "IDIV");
 }
 
 sym_index ast_mod::type_check()
 {
     /* Your code here */
-    return type_checker->type_check_integers(this, "MOD");
+    return type = type_checker->type_check_integers(this, "MOD");
 }
 
 
@@ -400,8 +407,16 @@ sym_index ast_procedurecall::type_check()
 sym_index ast_assign::type_check()
 {
     /* Your code here */
-    lhs->type_check();
-    rhs->type_check();
+    sym_index left_type = lhs->type_check();
+    sym_index right_type = rhs->type_check();
+    if (left_type == integer_type && right_type == real_type)
+    {
+        type_error(rhs->pos) << "Can't assign a real value to an integer variable." << endl;
+    }
+    if (left_type == real_type && right_type == integer_type)
+    {
+        rhs = new ast_cast(rhs->pos, rhs);
+    }
     return void_type;
 }
 
@@ -501,13 +516,13 @@ sym_index ast_functioncall::type_check()
 sym_index ast_uminus::type_check()
 {
     /* Your code here */
-    sym_index type = expr->type_check();
-    if (type == void_type)
+    sym_index type1 = expr->type_check();
+    if (type1 == void_type)
     {
         type_error(pos) << "Unary of type void" << endl;
     }
     
-    return type;
+    return type = type1;
 }
 
 sym_index ast_not::type_check()
@@ -518,7 +533,7 @@ sym_index ast_not::type_check()
     {
         type_error(pos) << "Logical negation on non-integer" << endl;
     }
-    return void_type;
+    return integer_type;
 }
 
 
