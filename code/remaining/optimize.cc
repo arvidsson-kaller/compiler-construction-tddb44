@@ -39,7 +39,18 @@ bool ast_optimizer::is_binop(ast_expression *node)
     }
 }
 
-
+bool ast_optimizer::is_binrel(ast_expression *node)
+{
+    switch (node->tag) {
+    case AST_GREATERTHAN:
+    case AST_LESSTHAN:
+    case AST_EQUAL:
+    case AST_NOTEQUAL:
+        return true;
+    default:
+        return false;
+    }
+}
 
 /* We overload this method for the various ast_node subclasses that can
    appear in the AST. By use of virtual (dynamic) methods, we ensure that
@@ -95,13 +106,28 @@ void ast_stmt_list::optimize()
 void ast_expr_list::optimize()
 {
     /* Your code here */
+    if (preceding != NULL)
+    {
+        preceding->optimize();
+    }
+    if (last_expr != NULL)
+    {
+        last_expr = optimizer->fold_constants(last_expr);
+    }
 }
-
 
 /* Optimize an elsif list. */
 void ast_elsif_list::optimize()
 {
     /* Your code here */
+    if (preceding != NULL)
+    {
+        preceding->optimize();
+    }
+    if (last_elsif != NULL)
+    {
+        last_elsif->optimize();
+    }
 }
 
 
@@ -116,9 +142,8 @@ void ast_id::optimize()
 void ast_indexed::optimize()
 {
     /* Your code here */
+    index->optimize();
 }
-
-
 
 /* This convenience method is used to apply constant folding to all
    binary operations. It returns either the resulting optimized node or the
@@ -126,7 +151,131 @@ void ast_indexed::optimize()
 ast_expression *ast_optimizer::fold_constants(ast_expression *node)
 {
     /* Your code here */
-    return NULL;
+    node->optimize();
+
+    if (node->tag == AST_ID)
+    {
+        auto symbol = sym_tab->get_symbol(node->get_ast_id()->sym_p);
+        if (symbol->tag != SYM_CONST)
+        {
+            return node;
+        }
+        if (symbol->type == integer_type)
+        {
+            return new ast_integer(node->pos, symbol->get_constant_symbol()->const_value.ival);
+        }
+        if (symbol->type == real_type)
+        {
+            return new ast_real(node->pos, symbol->get_constant_symbol()->const_value.rval);
+        }
+    }
+    else if (is_binop(node))
+    {
+        auto op = node->get_ast_binaryoperation();
+        if ((op->left->tag != AST_INTEGER && op->left->tag != AST_REAL) || (op->right->tag != AST_INTEGER && op->right->tag != AST_REAL))
+        {
+            return node;
+        }
+        switch (node->tag)
+        {
+        case AST_ADD:
+            if (op->left->tag == AST_INTEGER && op->right->tag == AST_INTEGER)
+            {
+                return new ast_integer(op->pos, op->left->get_ast_integer()->value + op->right->get_ast_integer()->value);
+            }
+            if (op->left->tag == AST_REAL && op->right->tag == AST_INTEGER)
+            {
+                return new ast_real(op->pos, op->left->get_ast_real()->value + op->right->get_ast_integer()->value);
+            }
+            if (op->left->tag == AST_INTEGER && op->right->tag == AST_REAL)
+            {
+                return new ast_real(op->pos, op->left->get_ast_integer()->value + op->right->get_ast_real()->value);
+            }
+            if (op->left->tag == AST_REAL && op->right->tag == AST_REAL)
+            {
+                return new ast_real(op->pos, op->left->get_ast_real()->value + op->right->get_ast_real()->value);
+            }
+            break;
+        case AST_SUB:
+            if (op->left->tag == AST_INTEGER && op->right->tag == AST_INTEGER)
+            {
+                return new ast_integer(op->pos, op->left->get_ast_integer()->value - op->right->get_ast_integer()->value);
+            }
+            if (op->left->tag == AST_REAL && op->right->tag == AST_INTEGER)
+            {
+                return new ast_real(op->pos, op->left->get_ast_real()->value - op->right->get_ast_integer()->value);
+            }
+            if (op->left->tag == AST_INTEGER && op->right->tag == AST_REAL)
+            {
+                return new ast_real(op->pos, op->left->get_ast_integer()->value - op->right->get_ast_real()->value);
+            }
+            if (op->left->tag == AST_REAL && op->right->tag == AST_REAL)
+            {
+                return new ast_real(op->pos, op->left->get_ast_real()->value - op->right->get_ast_real()->value);
+            }
+            break;
+        case AST_MULT:
+            if (op->left->tag == AST_INTEGER && op->right->tag == AST_INTEGER)
+            {
+                return new ast_integer(op->pos, op->left->get_ast_integer()->value * op->right->get_ast_integer()->value);
+            }
+            if (op->left->tag == AST_REAL && op->right->tag == AST_INTEGER)
+            {
+                return new ast_real(op->pos, op->left->get_ast_real()->value * op->right->get_ast_integer()->value);
+            }
+            if (op->left->tag == AST_INTEGER && op->right->tag == AST_REAL)
+            {
+                return new ast_real(op->pos, op->left->get_ast_integer()->value * op->right->get_ast_real()->value);
+            }
+            if (op->left->tag == AST_REAL && op->right->tag == AST_REAL)
+            {
+                return new ast_real(op->pos, op->left->get_ast_real()->value * op->right->get_ast_real()->value);
+            }
+            break;
+        case AST_DIVIDE:
+            if (op->left->tag == AST_REAL && op->right->tag == AST_INTEGER)
+            {
+                return new ast_real(op->pos, op->left->get_ast_real()->value / op->right->get_ast_integer()->value);
+            }
+            if (op->left->tag == AST_INTEGER && op->right->tag == AST_REAL)
+            {
+                return new ast_real(op->pos, op->left->get_ast_integer()->value / op->right->get_ast_real()->value);
+            }
+            if (op->left->tag == AST_REAL && op->right->tag == AST_REAL)
+            {
+                return new ast_real(op->pos, op->left->get_ast_real()->value / op->right->get_ast_real()->value);
+            }
+            break;
+        case AST_OR:
+            if (op->left->tag == AST_INTEGER && op->right->tag == AST_INTEGER)
+            {
+                return new ast_integer(op->pos, op->left->get_ast_integer()->value || op->right->get_ast_integer()->value);
+            }
+            break;
+        case AST_AND:
+            if (op->left->tag == AST_INTEGER && op->right->tag == AST_INTEGER)
+            {
+                return new ast_integer(op->pos, op->left->get_ast_integer()->value && op->right->get_ast_integer()->value);
+            }
+            break;
+        case AST_IDIV:
+            if (op->left->tag == AST_INTEGER && op->right->tag == AST_INTEGER)
+            {
+                return new ast_integer(op->pos, op->left->get_ast_integer()->value / op->right->get_ast_integer()->value);
+            }
+            break;
+        case AST_MOD:
+            if (op->left->tag == AST_INTEGER && op->right->tag == AST_INTEGER)
+            {
+                return new ast_integer(op->pos, op->left->get_ast_integer()->value % op->right->get_ast_integer()->value);
+            }
+            break;
+
+        default:
+            break;
+        }
+    }
+    return node;
 }
 
 /* All the binary operations should already have been detected in their parent
@@ -134,41 +283,57 @@ ast_expression *ast_optimizer::fold_constants(ast_expression *node)
 void ast_add::optimize()
 {
     /* Your code here */
+    left = optimizer->fold_constants(left);
+    right = optimizer->fold_constants(right);
 }
 
 void ast_sub::optimize()
 {
     /* Your code here */
+    left = optimizer->fold_constants(left);
+    right = optimizer->fold_constants(right);
 }
 
 void ast_mult::optimize()
 {
     /* Your code here */
+    left = optimizer->fold_constants(left);
+    right = optimizer->fold_constants(right);
 }
 
 void ast_divide::optimize()
 {
     /* Your code here */
+    left = optimizer->fold_constants(left);
+    right = optimizer->fold_constants(right);
 }
 
 void ast_or::optimize()
 {
     /* Your code here */
+    left = optimizer->fold_constants(left);
+    right = optimizer->fold_constants(right);
 }
 
 void ast_and::optimize()
 {
     /* Your code here */
+    left = optimizer->fold_constants(left);
+    right = optimizer->fold_constants(right);
 }
 
 void ast_idiv::optimize()
 {
     /* Your code here */
+    left = optimizer->fold_constants(left);
+    right = optimizer->fold_constants(right);
 }
 
 void ast_mod::optimize()
 {
     /* Your code here */
+    left = optimizer->fold_constants(left);
+    right = optimizer->fold_constants(right);
 }
 
 
@@ -177,21 +342,29 @@ void ast_mod::optimize()
 void ast_equal::optimize()
 {
     /* Your code here */
+    left = optimizer->fold_constants(left);
+    right = optimizer->fold_constants(right);
 }
 
 void ast_notequal::optimize()
 {
     /* Your code here */
+    left = optimizer->fold_constants(left);
+    right = optimizer->fold_constants(right);
 }
 
 void ast_lessthan::optimize()
 {
     /* Your code here */
+    left = optimizer->fold_constants(left);
+    right = optimizer->fold_constants(right);
 }
 
 void ast_greaterthan::optimize()
 {
     /* Your code here */
+    left = optimizer->fold_constants(left);
+    right = optimizer->fold_constants(right);
 }
 
 
@@ -201,52 +374,99 @@ void ast_greaterthan::optimize()
 void ast_procedurecall::optimize()
 {
     /* Your code here */
+    if (parameter_list != NULL)
+    {
+        parameter_list->optimize();
+    }
 }
 
 
 void ast_assign::optimize()
 {
     /* Your code here */
+    rhs = optimizer->fold_constants(rhs);
 }
 
 
 void ast_while::optimize()
 {
     /* Your code here */
+    if (condition != NULL)
+    {
+        condition = optimizer->fold_constants(condition);
+    }
+    if (body != NULL)
+    {
+        body->optimize();
+    }
 }
 
 
 void ast_if::optimize()
 {
     /* Your code here */
+    if (condition != NULL)
+    {
+        condition = optimizer->fold_constants(condition);
+    }
+    if (body != NULL)
+    {
+        body->optimize();
+    }
+    if (else_body != NULL)
+    {
+        else_body->optimize();
+    }
+    if (elsif_list != NULL)
+    {
+        elsif_list->optimize();
+    }
 }
 
 
 void ast_return::optimize()
 {
     /* Your code here */
+    if (value != NULL)
+    {
+        value = optimizer->fold_constants(value);
+    }
 }
 
 
 void ast_functioncall::optimize()
 {
     /* Your code here */
+    if (parameter_list != NULL)
+    {
+        parameter_list->optimize();
+    }
 }
 
 void ast_uminus::optimize()
 {
     /* Your code here */
+    expr = optimizer->fold_constants(expr);
 }
 
 void ast_not::optimize()
 {
     /* Your code here */
+    expr = optimizer->fold_constants(expr);
 }
 
 
 void ast_elsif::optimize()
 {
     /* Your code here */
+    if (condition != NULL)
+    {
+        condition = optimizer->fold_constants(condition);
+    }
+    if (body != NULL)
+    {
+        body->optimize();
+    }
 }
 
 

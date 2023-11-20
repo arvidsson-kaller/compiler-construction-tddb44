@@ -38,6 +38,7 @@ public:
       It is needed to find out which nodes are eligible for optimization.
      */
     bool is_binop(ast_expression *);
+    bool is_binrel(ast_expression *);
 
     /*!
       This is a convenient method used in optimize.cc. It has to be public
