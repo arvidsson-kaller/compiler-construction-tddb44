@@ -394,14 +394,14 @@ void ast_expr_list::generate_parameter_list(quad_list &q,
 {
     USE_Q;
     /* Your code here */
-    if (preceding != NULL)
-    {
-        preceding->generate_parameter_list(q, NULL, nr_params);
-    }
     if (last_expr != NULL)
     {
         (*nr_params)++;
         q += new quadruple(q_param, last_expr->generate_quads(q), NULL_SYM, NULL_SYM);
+    }
+    if (preceding != NULL)
+    {
+        preceding->generate_parameter_list(q, NULL, nr_params);
     }
 }
 
@@ -427,13 +427,13 @@ sym_index ast_functioncall::generate_quads(quad_list &q)
     USE_Q;
     /* Your code here */
     int nr_params = 0;
+    sym_index id_pos = id->generate_quads(q);
+    sym_index pos = sym_tab->gen_temp_var(type);
     if (parameter_list != NULL)
     {
         parameter_list->generate_parameter_list(q, NULL, &nr_params);
     }
-
-    sym_index pos = sym_tab->gen_temp_var(type);
-    q += new quadruple(q_call, id->generate_quads(q), nr_params, pos);
+    q += new quadruple(q_call, id_pos, nr_params, pos);
     return pos;
 }
 

@@ -228,7 +228,7 @@ sym_index ast_indexed::type_check()
     {
         type_error(pos) << "List index of non-integer type: " << index << endl;
     }
-    return id->type_check();
+    return type = id->type_check();
 }
 
 
