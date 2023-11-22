@@ -159,7 +159,7 @@ sym_index ast_real::generate_quads(quad_list &q)
     USE_Q;
     /* Your code here */
     sym_index pos = sym_tab->gen_temp_var(real_type);
-    q += new quadruple(q_rload, value, NULL_SYM, pos);
+    q += new quadruple(q_rload, sym_tab->ieee(value), NULL_SYM, pos);
     return pos;
 }
 
