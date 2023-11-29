@@ -66,7 +66,7 @@ void code_generator::prologue(symbol *new_env)
     int ar_size;
     int label_nr;
     // Used to count parameters.
-    parameter_symbol *last_arg;
+    // parameter_symbol *last_arg; // why does this exist? To confuse us?
 
     // Again, we need a safe downcast for a procedure/function.
     // Note that since we have already generated quads for the entire block
@@ -76,13 +76,13 @@ void code_generator::prologue(symbol *new_env)
         procedure_symbol *proc = new_env->get_procedure_symbol();
         ar_size = align(proc->ar_size);
         label_nr = proc->label_nr;
-        last_arg = proc->last_parameter;
+        // last_arg = proc->last_parameter;
     } else if (new_env->tag == SYM_FUNC) {
         function_symbol *func = new_env->get_function_symbol();
         /* Make sure ar_size is a multiple of eight */
         ar_size = align(func->ar_size);
         label_nr = func->label_nr;
-        last_arg = func->last_parameter;
+        // last_arg = func->last_parameter;
     } else {
         fatal("code_generator::prologue() called for non-proc/func");
         return;
@@ -103,12 +103,9 @@ void code_generator::prologue(symbol *new_env)
     out << "\t\t" << "push" << "\t" << "rbp" << endl;
     out << "\t\t" << "mov" << "\t" << "rcx, rsp" << endl;
 
-    parameter_symbol *current_arg = last_arg;
-    int i = 1;
-    while (current_arg != NULL) {
-        out << "\t\t" << "push" << "\t" << "[rbp-" << i++ * STACK_WIDTH << "]" << endl;
-        current_arg = current_arg->preceding;
-    }
+    for (int i = 1; i <= new_env->level; i++) {
+		out << "\t\t" << "push" << "\t" << "[rbp-" << i * STACK_WIDTH << "]" << endl;
+	}
 
     out << "\t\t" << "push" << "\t" << "rcx" << endl;
     out << "\t\t" << "mov" << "\t" << "rbp, rcx" << endl;
@@ -116,8 +113,6 @@ void code_generator::prologue(symbol *new_env)
 
     out << flush;
 }
-
-
 
 /* This method generates assembler code for leaving a procedure or function. */
 void code_generator::epilogue(symbol *old_env)
