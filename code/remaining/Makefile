@@ -68,7 +68,7 @@ lab6: all
 	- ./diesel -b -q -y ../testpgm/quadtest1.d 2>&1 | diff -ub ../trace/quadtest1.trace -
 
 lab7: all
-	- ./diesel -y ./codetest1.d 2>&1 | diff -ub ../trace/codetest1.trace -
+	- ./diesel -y ../testpgm/codetest1.d 2>&1 | diff -ub ../trace/codetest1.trace -
 	diff -ub ../trace/codetest1.dout d.out
 $(DPFILE) depend : $(BASESRC) $(HEADERS) $(SOURCES)
 	$(CC) $(DPFLAGS) $(CFLAGS) $(BASESRC) > $(DPFILE)

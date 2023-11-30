@@ -176,7 +176,7 @@ sym_index symbol_table::gen_temp_var(sym_index type)
 {
     /* Your code here */
     char tmp[MAX_TEMP_VAR_LENGTH];
-    snprintf(tmp, MAX_TEMP_VAR_LENGTH, "$%ld      ", ++temp_nr);
+    snprintf(tmp, MAX_TEMP_VAR_LENGTH + 1, "$%ld      ", ++temp_nr);
     pool_index pool_p = pool_install(tmp);
     return enter_variable(pool_p, type);
 }

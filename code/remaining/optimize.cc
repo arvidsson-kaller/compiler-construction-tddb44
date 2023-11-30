@@ -153,23 +153,7 @@ ast_expression *ast_optimizer::fold_constants(ast_expression *node)
     /* Your code here */
     node->optimize();
 
-    if (node->tag == AST_ID)
-    {
-        auto symbol = sym_tab->get_symbol(node->get_ast_id()->sym_p);
-        if (symbol->tag != SYM_CONST)
-        {
-            return node;
-        }
-        if (symbol->type == integer_type)
-        {
-            return new ast_integer(node->pos, symbol->get_constant_symbol()->const_value.ival);
-        }
-        if (symbol->type == real_type)
-        {
-            return new ast_real(node->pos, symbol->get_constant_symbol()->const_value.rval);
-        }
-    }
-    else if (is_binop(node))
+    if (is_binop(node))
     {
         auto op = node->get_ast_binaryoperation();
         if ((op->left->tag != AST_INTEGER && op->left->tag != AST_REAL) || (op->right->tag != AST_INTEGER && op->right->tag != AST_REAL))

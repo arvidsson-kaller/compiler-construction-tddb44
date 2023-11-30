@@ -458,7 +458,10 @@ sym_index ast_while::generate_quads(quad_list &q)
 
     // Generate quads for the body. Following these come an unconditional
     // jump to the 'top' label, ie, run the condition etc again.
-    pos = body->generate_quads(q);
+    if (body != NULL)
+    {
+        body->generate_quads(q);
+    }
     q += new quadruple(q_jmp, top,  NULL_SYM, NULL_SYM);
 
     // This is where we jump to if the while condition evaluates to false.
@@ -516,16 +519,20 @@ sym_index ast_if::generate_quads(quad_list &q)
     USE_Q;
     /* Your code here */
     int body_bottom = sym_tab->get_next_label();
-    int bottom = sym_tab->get_next_label();
 
+    int bottom;
+    
     sym_index pos = condition->generate_quads(q);
     // Jump past the body if condition is not satisfied
     q += new quadruple(q_jmpf, body_bottom, pos, NULL_SYM);
     if (body != NULL)
     {
         body->generate_quads(q);
-    }    
-    q += new quadruple(q_jmp, bottom, NULL_SYM, NULL_SYM);
+    }
+    if (elsif_list != NULL || else_body != NULL) {
+        bottom = sym_tab->get_next_label();
+        q += new quadruple(q_jmp, bottom, NULL_SYM, NULL_SYM);
+    }
     q += new quadruple(q_labl, body_bottom, NULL_SYM, NULL_SYM);
 
 
@@ -538,9 +545,9 @@ sym_index ast_if::generate_quads(quad_list &q)
     {
         else_body->generate_quads(q);
     }
-
-    q += new quadruple(q_labl, bottom, NULL_SYM, NULL_SYM);
-
+    if (elsif_list != NULL || else_body != NULL) {
+        q += new quadruple(q_labl, bottom, NULL_SYM, NULL_SYM);
+    }
     
     return NULL_SYM;
 }

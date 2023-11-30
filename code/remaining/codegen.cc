@@ -43,7 +43,6 @@ code_generator::~code_generator()
    the symbol for the environment for which code is being generated. */
 void code_generator::generate_assembler(quad_list *q, symbol *env)
 {
-    //cout << "😎";
     prologue(env);
     expand(q);
     epilogue(env);
@@ -64,7 +63,6 @@ int code_generator::align(int frame_size)
    function. */
 void code_generator::prologue(symbol *new_env)
 {
-    out << "😎PROLOGUE "<< endl;
     int ar_size;
     int label_nr;
     // Used to count parameters.
@@ -145,7 +143,25 @@ void code_generator::find(sym_index sym_p, int *level, int *offset)
     /* Your code here */
     auto symbol = sym_tab->get_symbol(sym_p);
     *level = symbol->level;
-    *offset = symbol->offset;
+    if (symbol->tag == SYM_PARAM)
+    {
+        // Located above RBP in the stack (=> plus)
+        // Jump over return address
+        *offset = STACK_WIDTH;
+        // Jump to symbol
+        *offset += symbol->offset;
+        // Jump to the beginning of the symbol
+        *offset += symbol->get_parameter_symbol()->size;
+    }
+    else 
+    {
+        // Located below RBP in the stack (=> minus)
+        // Jump over the display area
+        *offset = -(symbol->level + 1) * STACK_WIDTH;
+        // Jump to the symbol
+        *offset -= symbol->offset;   
+    }
+    // *offset = symbol->offset;
 }
 
 /*
@@ -252,18 +268,17 @@ void code_generator::store_float(sym_index sym_p)
 void code_generator::array_address(sym_index sym_p, register_type dest)
 {
     /* Your code here */
-    // sym_tab->get_symbol(sym_p)->get_array_symbol()
     block_level level;      // Current scope level.
     int offset;             // Offset within current activation record.
 
     find(sym_p, &level, &offset);
     frame_address(level, RCX);
-    out << "\t\t" << "mov" << "\t" << reg[dest] << ", rcx";
     if (offset >= 0) {
-        out << "+" << offset;
+        out << "\t\t" << "add" << "\t" << "rcx, " << offset << endl;
     } else {
-        out << offset; // Implicit "-"
+        out << "\t\t" << "sub" << "\t" << "rcx, " << -offset << endl;
     }
+    out << "\t\t" << "mov" << "\t" << reg[dest] << ", rcx" << endl;
 }
 
 /* This method expands a quad_list into assembler code, quad for quad. */
