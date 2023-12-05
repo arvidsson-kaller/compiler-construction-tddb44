@@ -156,6 +156,36 @@ ast_expression *ast_optimizer::fold_constants(ast_expression *node)
     if (is_binop(node))
     {
         auto op = node->get_ast_binaryoperation();
+        if (op->left->tag == AST_ID && op->right->tag != AST_ID)
+        {
+            auto symbol = sym_tab->get_symbol(op->left->get_ast_id()->sym_p);
+            if (symbol->tag == SYM_CONST)
+            {
+                if (symbol->type == integer_type)
+                {
+                    op->left = new ast_integer(op->left->pos, symbol->get_constant_symbol()->const_value.ival);
+                }
+                else if (symbol->type == real_type)
+                {
+                    op->left = new ast_real(op->left->pos, symbol->get_constant_symbol()->const_value.rval);
+                }
+            }
+        }
+        if (op->right->tag == AST_ID && op->left->tag != AST_ID)
+        {
+            auto symbol = sym_tab->get_symbol(op->right->get_ast_id()->sym_p);
+            if (symbol->tag == SYM_CONST)
+            {
+                if (symbol->type == integer_type)
+                {
+                    op->right = new ast_integer(op->right->pos, symbol->get_constant_symbol()->const_value.ival);
+                }
+                else if (symbol->type == real_type)
+                {
+                    op->right = new ast_real(op->right->pos, symbol->get_constant_symbol()->const_value.rval);
+                }
+            }
+        }
         if ((op->left->tag != AST_INTEGER && op->left->tag != AST_REAL) || (op->right->tag != AST_INTEGER && op->right->tag != AST_REAL))
         {
             return node;
@@ -320,8 +350,6 @@ void ast_mod::optimize()
     right = optimizer->fold_constants(right);
 }
 
-
-
 /* We can apply constant folding to binary relations as well. */
 void ast_equal::optimize()
 {
@@ -351,8 +379,6 @@ void ast_greaterthan::optimize()
     right = optimizer->fold_constants(right);
 }
 
-
-
 /*** The various classes derived from ast_statement. ***/
 
 void ast_procedurecall::optimize()
@@ -364,13 +390,11 @@ void ast_procedurecall::optimize()
     }
 }
 
-
 void ast_assign::optimize()
 {
     /* Your code here */
     rhs = optimizer->fold_constants(rhs);
 }
-
 
 void ast_while::optimize()
 {
@@ -384,7 +408,6 @@ void ast_while::optimize()
         body->optimize();
     }
 }
-
 
 void ast_if::optimize()
 {
@@ -407,7 +430,6 @@ void ast_if::optimize()
     }
 }
 
-
 void ast_return::optimize()
 {
     /* Your code here */
@@ -416,7 +438,6 @@ void ast_return::optimize()
         value = optimizer->fold_constants(value);
     }
 }
-
 
 void ast_functioncall::optimize()
 {
@@ -439,7 +460,6 @@ void ast_not::optimize()
     expr = optimizer->fold_constants(expr);
 }
 
-
 void ast_elsif::optimize()
 {
     /* Your code here */
@@ -452,8 +472,6 @@ void ast_elsif::optimize()
         body->optimize();
     }
 }
-
-
 
 void ast_integer::optimize()
 {
@@ -471,13 +489,10 @@ void ast_cast::optimize()
     /* Your code here */
 }
 
-
-
 void ast_procedurehead::optimize()
 {
     fatal("Trying to call ast_procedurehead::optimize()");
 }
-
 
 void ast_functionhead::optimize()
 {
