@@ -201,8 +201,8 @@ void code_generator::fetch_float(sym_index sym_p)
     if (symbol->tag == SYM_CONST)
     {
         constant_symbol* const_sym = symbol->get_constant_symbol();
-        out << "\t\t" << "sub" << "\t" << "rsp, " << STACK_WIDTH << endl;
-        out << "\t\t" << "mov" << "\t" << "rsp, " << sym_tab->ieee(const_sym->const_value.rval) << endl;
+        out << "\t\t" << "mov" << "\t" << "rcx, " << sym_tab->ieee(const_sym->const_value.rval) << endl;
+        out << "\t\t" << "push" << "\t" << "rcx" << endl;
         out << "\t\t" << "fld" << "\t" << "qword ptr [rsp]" << endl;
         out << "\t\t" << "add" << "\t" << "rsp, " << STACK_WIDTH << endl;
         return;
